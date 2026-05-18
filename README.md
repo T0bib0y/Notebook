@@ -1,50 +1,40 @@
 # 📓 Notebook
 
-**Simple • Organized • Private Markdown Notebook**
-
-A clean, ad-free text editor with **folders**, **tags**, powerful search, and full PWA support.
+**The cleanest private Markdown notebook** — with folders, tags, drag & drop, and import/export.
 
 ## ✨ Features
 
-- **Folders** — Organize notes into Personal, Work, Ideas (or none)
-- **Tags** — Add flexible tags to notes
-- **Search** across titles, content, and tags
-- **Progressive Web App** — Installable + works offline
+- **Custom Folders** — create your own folders
+- **Drag & Drop** — move notes between folders by dragging
+- **Tags** — flexible tagging system
+- **Import / Export** — full JSON backup & restore
+- Powerful search
+- PWA support (installable + offline)
 - Live Markdown preview
-- Export single note or all notes (JSON backup)
-- Keyboard shortcuts
 
-## 🧭 How to Use Folders & Tags
+## 🛠️ Key Interactions
 
-### Folders
-- Notes appear under **All Notes** by default
-- Use the **folder dropdown** (next to title) to assign a note to Personal / Work / Ideas
-- Click any folder in the sidebar to filter your notes
+### Custom Folders
+- Click **+ New** next to FOLDERS in the sidebar
+- Type any folder name
+- Notes can be assigned via the dropdown next to the title
 
-### Tags
-- Add tags in the **Tags** field below the title (comma separated)
-- Tags appear as small pills
-- Click any tag pill to quickly filter by that tag
+### Drag & Drop
+- Drag any note from the list onto a folder in the sidebar to move it instantly
 
-## 🚀 Getting Started
+### Import Notes
+- Go to **Export → Import from JSON**
+- Select a previously exported backup file
+- New notes are added (duplicates by ID are skipped)
+
+## 🚀 Quick Start
 
 1. Open `index.html`
-2. Create notes with **New**
-3. Organize using folders and tags
-4. Install as PWA for the best experience
+2. Create notes and organize them with folders & tags
+3. Install as PWA for best experience
+4. Use Export All + Import for backups
 
-## 📁 Project Structure
-
-```
-Notebook/
-├── index.html      # Main app (folders + tags + PWA)
-├── manifest.json
-├── sw.js
-├── LICENSE
-└── README.md
-```
-
-## 🔒 Privacy
-Completely local. No accounts. No tracking. Works offline.
+## Privacy
+100% local. No tracking. Works offline after first load.
 
 MIT License
