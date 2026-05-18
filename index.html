@@ -9,7 +9,6 @@
     <meta name="theme-color" content="#18181b">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="description" content="Clean, private Markdown notebook with folders, tags, drag & drop, and excellent mobile support.">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -25,6 +24,9 @@
         .tag-pill { font-size: 10px; padding: 1px 6px; background: #27272a; border-radius: 9999px; }
         @media (max-width: 1023px) {
             .desktop-only { display: none !important; }
+        }
+        .fullscreen-active #editor-pane {
+            height: 100vh !important;
         }
     </style>
 </head>
@@ -48,8 +50,7 @@
             <!-- Search -->
             <div class="px-3 pt-3 pb-2">
                 <div class="relative">
-                    <input id="search-input" type="text" placeholder="Search notes..." 
-                           class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl pl-9 py-2 text-sm outline-none">
+                    <input id="search-input" type="text" placeholder="Search notes..." class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl pl-9 py-2 text-sm outline-none">
                     <i class="fa-solid fa-search absolute left-3.5 top-2.5 text-zinc-500"></i>
                 </div>
             </div>
@@ -80,11 +81,9 @@
             <!-- Top Bar -->
             <div class="h-14 border-b border-zinc-800 bg-zinc-900 px-4 flex items-center justify-between">
                 <div class="flex items-center gap-x-3 flex-1 min-w-0">
-                    <input id="note-title" type="text" placeholder="Untitled note" 
-                           class="bg-transparent text-xl font-semibold flex-1 outline-none min-w-0" onblur="updateCurrentNote()">
+                    <input id="note-title" type="text" placeholder="Untitled note" class="bg-transparent text-xl font-semibold flex-1 outline-none min-w-0" onblur="updateCurrentNote()">
                     
-                    <select id="note-folder" onchange="updateCurrentNote()" 
-                            class="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-1.5 text-sm max-w-[120px]">
+                    <select id="note-folder" onchange="updateCurrentNote()" class="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-1.5 text-sm max-w-[120px]">
                         <option value="">No folder</option>
                     </select>
                 </div>
@@ -95,6 +94,11 @@
                     <!-- Mobile Preview Toggle -->
                     <button onclick="toggleMobilePreview()" class="lg:hidden w-9 h-9 flex items-center justify-center text-zinc-400 hover:bg-zinc-800 rounded-xl">
                         <i class="fa-solid fa-eye"></i>
+                    </button>
+
+                    <!-- Fullscreen Button (Mobile focused) -->
+                    <button onclick="toggleEditorFullscreen()" class="w-9 h-9 flex items-center justify-center text-zinc-400 hover:bg-zinc-800 rounded-xl" title="Toggle Fullscreen">
+                        <i id="fullscreen-icon" class="fa-solid fa-expand"></i>
                     </button>
 
                     <button onclick="toggleTheme()" class="w-9 h-9 flex items-center justify-center text-zinc-400 hover:bg-zinc-800 rounded-xl">
@@ -143,13 +147,18 @@
             <div class="flex-1 flex overflow-hidden" id="editor-preview-container">
                 <!-- Editor -->
                 <div class="flex-1 flex flex-col border-r border-zinc-800 min-w-0" id="editor-pane">
-                    <div class="px-4 py-2 text-sm flex items-center border-b border-zinc-800 bg-zinc-900/40">
+                    <div class="px-4 py-2 text-sm flex items-center justify-between border-b border-zinc-800 bg-zinc-900/40">
                         <span class="text-emerald-400 font-semibold flex items-center gap-x-2"><i class="fa-solid fa-edit"></i> Editor</span>
+                        
+                        <!-- Fullscreen button inside editor header (mobile friendly) -->
+                        <button onclick="toggleEditorFullscreen()" class="lg:hidden text-zinc-400 hover:text-white px-2">
+                            <i class="fa-solid fa-expand"></i>
+                        </button>
                     </div>
                     <textarea id="editor" class="flex-1 p-4 bg-zinc-950 resize-none outline-none text-[15px] leading-relaxed" placeholder="Start writing in Markdown..."></textarea>
                 </div>
 
-                <!-- Preview (hidden on mobile by default) -->
+                <!-- Preview -->
                 <div class="flex-1 flex flex-col min-w-0 hidden lg:flex" id="preview-pane">
                     <div class="px-4 py-2 text-sm flex items-center border-b border-zinc-800 bg-zinc-900/40">
                         <span class="text-violet-400 font-semibold flex items-center gap-x-2"><i class="fa-solid fa-eye"></i> Preview</span>
@@ -176,6 +185,7 @@
         let currentFolderFilter = '';
         let customFolders = [];
         let mobilePreviewVisible = false;
+        let isFullscreen = false;
 
         function loadData() {
             const savedNotes = localStorage.getItem('notebook_notes');
@@ -188,9 +198,9 @@
                 notes.push({
                     id: Date.now().toString(36),
                     title: "Welcome to Notebook",
-                    content: "# Final Polish Complete!\n\nThis version includes:\n\n- Custom folders + Drag & Drop\n- Note duplication\n- Great mobile responsiveness\n- Import from JSON\n\nEverything works beautifully on phone and desktop.",
+                    content: "# Fullscreen Mode Added!\n\nOn mobile, tap the expand icon to go into full screen editor mode for distraction-free writing.",
                     folder: "Ideas",
-                    tags: ["polish", "mobile"],
+                    tags: ["fullscreen", "mobile"],
                     updated: new Date().toISOString()
                 });
                 saveData();
@@ -403,6 +413,13 @@
             document.addEventListener('keydown', e => {
                 if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); createNewNote(); }
                 if (e.key === '/' && document.activeElement.id !== 'search-input') { e.preventDefault(); search.focus(); }
+                if (e.key === 'Escape' && isFullscreen) { exitFullscreen(); }
+            });
+
+            // Listen for fullscreen change
+            document.addEventListener('fullscreenchange', () => {
+                isFullscreen = !!document.fullscreenElement;
+                updateFullscreenIcon();
             });
 
             if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
@@ -538,6 +555,46 @@
             }
         }
 
+        // === NEW: Fullscreen Editor for Mobile ===
+        function toggleEditorFullscreen() {
+            const editorPane = document.getElementById('editor-pane');
+
+            if (!document.fullscreenElement) {
+                if (editorPane.requestFullscreen) {
+                    editorPane.requestFullscreen();
+                } else if (editorPane.webkitRequestFullscreen) {
+                    editorPane.webkitRequestFullscreen();
+                } else if (editorPane.msRequestFullscreen) {
+                    editorPane.msRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+        }
+
+        function updateFullscreenIcon() {
+            const icon = document.getElementById('fullscreen-icon');
+            if (document.fullscreenElement) {
+                icon.classList.remove('fa-expand');
+                icon.classList.add('fa-compress');
+            } else {
+                icon.classList.remove('fa-compress');
+                icon.classList.add('fa-expand');
+            }
+        }
+
+        function exitFullscreen() {
+            if (document.exitFullscreen) document.exitFullscreen();
+            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+            else if (document.msExitFullscreen) document.msExitFullscreen();
+        }
+
         function updateWordCount() {
             const words = (document.getElementById('editor').value.trim().match(/\S+/g) || []).length;
             document.getElementById('word-count').textContent = `${words} words`;
@@ -576,7 +633,6 @@
             updateFolderSelect();
             setupListeners();
 
-            // Load most recent note
             if (notes.length > 0) {
                 const latest = [...notes].sort((a,b) => new Date(b.updated) - new Date(a.updated))[0];
                 loadNote(latest.id);
@@ -587,12 +643,12 @@
                 updateWordCount();
             }, 80);
 
-            // Auto-hide preview on mobile initially
+            // Hide preview on mobile initially
             if (window.innerWidth < 1024) {
                 document.getElementById('preview-pane').classList.add('hidden');
             }
 
-            console.log('%c[Notebook] Mobile responsive + Note duplication added', 'color:#22c55e');
+            console.log('%c[Notebook] Mobile Fullscreen Editor feature added', 'color:#22c55e');
         }
 
         window.onload = initializeApp;
