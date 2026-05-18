@@ -197,14 +197,19 @@
                             <span>Export</span>
                             <i class="fa-solid fa-chevron-down text-xs ml-1"></i>
                         </button>
-                        <div class="absolute right-0 mt-2 w-44 bg-zinc-900 border border-zinc-700 rounded-2xl shadow-xl py-1 hidden group-hover:block z-50">
-                            <button onclick="exportNote('md')" class="w-full text-left px-4 py-2.5 text-sm hover:bg-zinc-800 flex items-center gap-x-3">
+                        <div class="absolute right-0 mt-2 w-52 bg-zinc-900 border border-zinc-700 rounded-2xl shadow-xl py-1 hidden group-hover:block z-50">
+                            <button onclick="exportNote('md')" class="w-full text-left px-4 py-2 text-sm hover:bg-zinc-800 flex items-center gap-x-3">
                                 <i class="fa-brands fa-markdown w-4"></i>
-                                <span>Markdown (.md)</span>
+                                <span>Current note as Markdown</span>
                             </button>
-                            <button onclick="exportNote('txt')" class="w-full text-left px-4 py-2.5 text-sm hover:bg-zinc-800 flex items-center gap-x-3">
+                            <button onclick="exportNote('txt')" class="w-full text-left px-4 py-2 text-sm hover:bg-zinc-800 flex items-center gap-x-3">
                                 <i class="fa-solid fa-file-lines w-4"></i>
-                                <span>Plain Text (.txt)</span>
+                                <span>Current note as Text</span>
+                            </button>
+                            <div class="border-t border-zinc-700 my-1"></div>
+                            <button onclick="exportAllNotes()" class="w-full text-left px-4 py-2 text-sm hover:bg-zinc-800 flex items-center gap-x-3 text-emerald-400">
+                                <i class="fa-solid fa-file-export w-4"></i>
+                                <span><strong>Export All Notes</strong> (JSON)</span>
                             </button>
                         </div>
                     </div>
@@ -295,12 +300,11 @@
                 notes = JSON.parse(saved);
             }
             
-            // Create welcome note if empty
             if (notes.length === 0) {
                 const welcomeNote = {
                     id: Date.now().toString(36),
                     title: "Welcome to Notebook",
-                    content: "# Welcome to Notebook\n\nThis is a **completely ad-free** and private text editor with **PWA support**.\n\n## New Features\n\n- Powerful search across all your notes\n- Install as a Progressive Web App (PWA)\n- Works great offline after first load\n\n## How to install\nLook for the install icon in your browser's address bar or menu.\n\nStart editing this note or create a new one from the sidebar.",
+                    content: "# Welcome to Notebook\n\nThis is a **completely ad-free** and private text editor with **PWA support**.\n\n## New Features\n\n- Powerful search across all your notes\n- Install as Progressive Web App (PWA)\n- Works great offline after first load\n- Export all notes as backup (JSON)\n\nStart editing this note or create a new one from the sidebar.",
                     updated: new Date().toISOString()
                 };
                 notes.push(welcomeNote);
@@ -309,7 +313,6 @@
             
             renderNotesList();
             
-            // Load the most recently updated note
             if (notes.length > 0) {
                 const sorted = [...notes].sort((a, b) => new Date(b.updated) - new Date(a.updated));
                 loadNote(sorted[0].id);
@@ -320,14 +323,12 @@
             localStorage.setItem('notebook_notes', JSON.stringify(notes));
         }
 
-        // Render the sidebar list (with optional search filter)
         function renderNotesList() {
             const container = document.getElementById('notes-list');
             container.innerHTML = '';
             
             let filteredNotes = [...notes];
             
-            // Apply search filter if active
             if (currentFilter) {
                 const q = currentFilter.toLowerCase();
                 filteredNotes = filteredNotes.filter(note => {
@@ -337,7 +338,6 @@
                 });
             }
             
-            // Sort by most recently updated
             filteredNotes.sort((a, b) => new Date(b.updated) - new Date(a.updated));
             
             if (filteredNotes.length === 0) {
@@ -359,7 +359,6 @@
                 
                 let preview = (note.content || '').substring(0, 80).replace(/\n/g, ' ').trim() || 'Empty note';
                 
-                // Simple highlight for search matches
                 if (currentFilter) {
                     const regex = new RegExp(`(${currentFilter})`, 'gi');
                     preview = preview.replace(regex, '<mark class="bg-yellow-400/30 text-yellow-200 px-0.5 rounded">$1</mark>');
@@ -373,67 +372,51 @@
                     </div>
                 `;
                 
-                div.onclick = () => {
-                    loadNote(note.id);
-                };
+                div.onclick = () => loadNote(note.id);
                 container.appendChild(div);
             });
         }
 
-        // Filter notes based on search input
         function filterNotes(query) {
             currentFilter = query;
             renderNotesList();
         }
 
-        // Load a specific note into the editor
         function loadNote(noteId) {
             const note = notes.find(n => n.id === noteId);
             if (!note) return;
 
             currentNoteId = noteId;
-            
-            // Update UI
             document.getElementById('note-title').value = note.title || '';
             document.getElementById('editor').value = note.content || '';
-            
-            // Render preview
             renderPreview();
             updateWordCount();
-            
-            // Highlight active in sidebar
             renderNotesList();
         }
 
-        // Update current note's title
         function updateCurrentNoteTitle() {
             if (!currentNoteId) return;
-            
             const titleInput = document.getElementById('note-title');
             const note = notes.find(n => n.id === currentNoteId);
             if (!note) return;
 
             note.title = titleInput.value.trim() || 'Untitled note';
             note.updated = new Date().toISOString();
-            
             saveNotes();
             renderNotesList();
         }
 
-        // Auto-save content
         function setupAutoSave() {
             const editor = document.getElementById('editor');
             
             editor.addEventListener('input', () => {
                 if (!currentNoteId) return;
-
                 const note = notes.find(n => n.id === currentNoteId);
                 if (!note) return;
 
                 note.content = editor.value;
                 note.updated = new Date().toISOString();
 
-                // Debounced save
                 clearTimeout(saveTimeout);
                 saveTimeout = setTimeout(() => {
                     saveNotes();
@@ -451,55 +434,35 @@
             titleInput.addEventListener('input', () => {
                 if (!currentNoteId) return;
                 const note = notes.find(n => n.id === currentNoteId);
-                if (note) {
-                    note.updated = new Date().toISOString();
-                }
+                if (note) note.updated = new Date().toISOString();
             });
         }
 
         function updateWordCount() {
             const editor = document.getElementById('editor');
             const text = editor.value || '';
-            
             const words = text.trim() ? text.trim().split(/\s+/).length : 0;
             const chars = text.length;
-            
-            const countEl = document.getElementById('word-count');
-            countEl.textContent = `${words} words • ${chars} chars`;
+            document.getElementById('word-count').textContent = `${words} words • ${chars} chars`;
         }
 
         function renderPreview() {
             const editor = document.getElementById('editor');
             const preview = document.getElementById('preview');
-            
             if (!editor || !preview) return;
-            
+
             const markdown = editor.value || '';
-            
             if (!markdown.trim()) {
-                preview.innerHTML = `
-                    <div class="h-full flex items-center justify-center">
-                        <div class="text-center text-zinc-500">
-                            <i class="fa-solid fa-eye text-4xl mb-3 opacity-40"></i>
-                            <p class="text-sm">Preview will appear here</p>
-                        </div>
-                    </div>
-                `;
+                preview.innerHTML = `<div class="h-full flex items-center justify-center"><div class="text-center text-zinc-500"><i class="fa-solid fa-eye text-4xl mb-3 opacity-40"></i><p class="text-sm">Preview will appear here</p></div></div>`;
                 return;
             }
-            
             try {
-                const html = marked.parse(markdown, {
-                    breaks: true,
-                    gfm: true
-                });
-                preview.innerHTML = html;
+                preview.innerHTML = marked.parse(markdown, { breaks: true, gfm: true });
             } catch (e) {
                 preview.innerHTML = `<div class="text-red-400 p-4">Error rendering preview</div>`;
             }
         }
 
-        // Create new note
         function createNewNote() {
             const newNote = {
                 id: Date.now().toString(36) + Math.random().toString(36).substr(2),
@@ -507,19 +470,16 @@
                 content: "# New Note\n\nStart writing here...",
                 updated: new Date().toISOString()
             };
-            
             notes.unshift(newNote);
             saveNotes();
-            
-            // Clear search when creating new note
+
             currentFilter = '';
             const searchInput = document.getElementById('search-input');
             if (searchInput) searchInput.value = '';
-            
+
             renderNotesList();
             loadNote(newNote.id);
-            
-            // Focus title for quick rename
+
             setTimeout(() => {
                 const titleInput = document.getElementById('note-title');
                 titleInput.focus();
@@ -527,32 +487,28 @@
             }, 50);
         }
 
-        // Delete current note
         function deleteCurrentNote() {
             if (!currentNoteId) return;
             if (!confirm('Delete this note? This cannot be undone.')) return;
 
             notes = notes.filter(n => n.id !== currentNoteId);
             saveNotes();
-            
+
             currentFilter = '';
             const searchInput = document.getElementById('search-input');
             if (searchInput) searchInput.value = '';
-            
+
             if (notes.length > 0) {
                 const sorted = [...notes].sort((a, b) => new Date(b.updated) - new Date(a.updated));
                 loadNote(sorted[0].id);
             } else {
                 createNewNote();
             }
-            
             renderNotesList();
         }
 
-        // Export current note
         function exportNote(format) {
             if (!currentNoteId) return;
-            
             const note = notes.find(n => n.id === currentNoteId);
             if (!note) return;
 
@@ -570,7 +526,6 @@
 
             const blob = new Blob([content], { type: mimeType });
             const url = URL.createObjectURL(blob);
-            
             const a = document.createElement('a');
             a.href = url;
             a.download = filename;
@@ -580,7 +535,45 @@
             URL.revokeObjectURL(url);
         }
 
-        // Theme toggle
+        // NEW: Export ALL notes as JSON backup
+        function exportAllNotes() {
+            if (notes.length === 0) {
+                alert('No notes to export!');
+                return;
+            }
+
+            const backup = {
+                exportedAt: new Date().toISOString(),
+                app: 'Notebook - Ad-free Text Editor',
+                version: '2.0',
+                noteCount: notes.length,
+                notes: notes
+            };
+
+            const json = JSON.stringify(backup, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const filename = `notebook-backup-${new Date().toISOString().split('T')[0]}.json`;
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            // Optional: Show success message
+            const status = document.getElementById('save-status');
+            const originalText = status.textContent;
+            status.textContent = 'All notes exported!';
+            status.className = 'font-mono text-emerald-400';
+            setTimeout(() => {
+                status.textContent = originalText || 'Saved locally';
+            }, 2000);
+        }
+
         function toggleTheme() {
             const html = document.documentElement;
             const icon = document.getElementById('theme-icon');
@@ -612,35 +605,25 @@
             }
         }
 
-        // Keyboard shortcuts
         function setupKeyboardShortcuts() {
             document.addEventListener('keydown', function(e) {
                 if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
                     e.preventDefault();
                     createNewNote();
                 }
-                
                 if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
                     e.preventDefault();
                     if (currentNoteId) {
-                        const note = notes.find(n => n.id === currentNoteId);
-                        if (note) {
-                            saveNotes();
-                            const status = document.getElementById('save-status');
-                            status.textContent = 'Saved!';
-                            setTimeout(() => {
-                                status.textContent = 'Saved locally';
-                            }, 1200);
-                        }
+                        saveNotes();
+                        const status = document.getElementById('save-status');
+                        status.textContent = 'Saved!';
+                        setTimeout(() => status.textContent = 'Saved locally', 1200);
                     }
                 }
-
                 if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
                     e.preventDefault();
                     document.getElementById('editor').focus();
                 }
-
-                // Focus search with /
                 if (e.key === '/' && document.activeElement.id !== 'search-input') {
                     e.preventDefault();
                     const searchInput = document.getElementById('search-input');
@@ -649,16 +632,12 @@
             });
         }
 
-        // Setup search functionality
         function setupSearch() {
             const searchInput = document.getElementById('search-input');
             if (!searchInput) return;
 
-            searchInput.addEventListener('input', (e) => {
-                filterNotes(e.target.value);
-            });
+            searchInput.addEventListener('input', (e) => filterNotes(e.target.value));
 
-            // Clear search on Escape
             searchInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
                     searchInput.value = '';
@@ -669,7 +648,6 @@
             });
         }
 
-        // Initialize everything
         function initializeApp() {
             initializeTailwind();
             loadTheme();
@@ -678,27 +656,21 @@
             setupKeyboardShortcuts();
             setupSearch();
 
-            // Register Service Worker for PWA
+            // Register Service Worker
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('./sw.js')
-                    .then(() => {
-                        console.log('%c[PWA] Service Worker registered successfully', 'color:#22c55e');
-                    })
-                    .catch((err) => {
-                        console.warn('[PWA] Service Worker registration failed:', err);
-                    });
+                    .then(() => console.log('%c[PWA] Service Worker registered (v2 with CDN cache)', 'color:#22c55e'))
+                    .catch(err => console.warn('[PWA] SW registration failed', err));
             }
 
-            // Initial preview render
             setTimeout(() => {
                 renderPreview();
                 updateWordCount();
             }, 100);
 
-            console.log('%c[Notebook] Ad-free PWA text editor initialized.', 'color:#3f3f46');
+            console.log('%c[Notebook] Ad-free PWA + Search + Export All initialized.', 'color:#3f3f46');
         }
 
-        // Boot the app
         window.onload = initializeApp;
     </script>
 </body>
