@@ -1,60 +1,50 @@
 # 📓 Notebook
 
-**Ad-free • Private • PWA-ready Markdown Notebook**
+**Simple • Organized • Private Markdown Notebook**
 
-A beautiful, fully offline-capable text editor with powerful search and backup features.
+A clean, ad-free text editor with **folders**, **tags**, powerful search, and full PWA support.
 
-## ✨ Key Features
+## ✨ Features
 
-- **Full-text Search** — instantly search titles + content
-- **Progressive Web App (PWA)** — installable + works offline
-- **Better CDN Caching** — full offline experience after first load
-- **Export All Notes** — one-click JSON backup of everything
+- **Folders** — Organize notes into Personal, Work, Ideas (or none)
+- **Tags** — Add flexible tags to notes
+- **Search** across titles, content, and tags
+- **Progressive Web App** — Installable + works offline
 - Live Markdown preview
-- Auto-save + multiple notes
-- Dark/Light themes
+- Export single note or all notes (JSON backup)
 - Keyboard shortcuts
+
+## 🧭 How to Use Folders & Tags
+
+### Folders
+- Notes appear under **All Notes** by default
+- Use the **folder dropdown** (next to title) to assign a note to Personal / Work / Ideas
+- Click any folder in the sidebar to filter your notes
+
+### Tags
+- Add tags in the **Tags** field below the title (comma separated)
+- Tags appear as small pills
+- Click any tag pill to quickly filter by that tag
 
 ## 🚀 Getting Started
 
-### Best Experience: Install as PWA
 1. Open `index.html`
-2. Click **Install Notebook** in the browser menu / address bar
-3. Use it like a native app (works offline!)
+2. Create notes with **New**
+3. Organize using folders and tags
+4. Install as PWA for the best experience
 
-### Quick Start
-Just open `index.html` in any browser.
-
-## 🛠️ How to Use New Features
-
-### Search Notes
-- Use the search bar in the sidebar
-- Matches both title and content
-- Press `/` to focus search • `Esc` to clear
-
-### Export All Notes (Backup)
-- Click the **Export** button → **Export All Notes (JSON)**
-- Creates a complete backup file you can re-import later (or use as archive)
-
-### Offline Mode
-Thanks to improved Service Worker + CDN caching:
-- After loading once while online, the editor works fully offline
-- All core libraries are cached
-
-## 📁 Project Files
+## 📁 Project Structure
 
 ```
 Notebook/
-├── index.html      # Main app (PWA + Search + Export)
-├── manifest.json   # PWA manifest
-├── sw.js           # Service Worker (improved offline caching)
+├── index.html      # Main app (folders + tags + PWA)
+├── manifest.json
+├── sw.js
 ├── LICENSE
 └── README.md
 ```
 
-## 📄 License
-MIT
+## 🔒 Privacy
+Completely local. No accounts. No tracking. Works offline.
 
----
-
-Made with care as a clean, private writing tool. Enjoy! ✍️
+MIT License
