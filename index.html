@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notebook • Ad-free Text Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap');
+        
+        :root {
+            --font-sans: 'Inter', system_ui, sans-serif;
+        }
+        
+        body {
+            font-family: var(--font-sans);
+        }
+        
+        .logo-font {
+            font-family: 'Space Grotesk', var(--font-sans);
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+
+        .note-item {
+            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .note-item:hover {
+            background-color: #27272a;
+        }
+        
+        .note-item.active {
+            background-color: #3f3f46;
+            border-left: 3px solid #a1a1aa;
+        }
+
+        #editor {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            line-height: 1.7;
+            tab-size: 4;
+        }
+
+        #preview {
+            font-size: 15px;
+            line-height: 1.75;
+        }
+
+        #preview h1, #preview h2, #preview h3 {
+            font-weight: 600;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+            color: #e4e4e7;
+        }
+
+        #preview p {
+            margin-bottom: 1em;
+        }
+
+        #preview ul, #preview ol {
+            padding-left: 1.5em;
+            margin-bottom: 1em;
+        }
+
+        #preview code {
+            background-color: #27272a;
+            padding: 0.1em 0.4em;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        #preview pre {
+            background-color: #18181b;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1em 0;
+        }
+
+        .prose-custom {
+            color: #d4d4d8;
+        }
+
+        .split-divider {
+            background: linear-gradient(to right, transparent, #3f3f46, transparent);
+        }
+
+        .status-bar {
+            font-size: 12px;
+            color: #71717a;
+        }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-200">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <div class="w-72 bg-zinc-900 border-r border-zinc-800 flex flex-col">
+            <!-- Sidebar Header -->
+            <div class="p-4 border-b border-zinc-800 flex items-center justify-between">
+                <div class="flex items-center gap-x-3">
+                    <div class="w-9 h-9 bg-white rounded-xl flex items-center justify-center">
+                        <i class="fa-solid fa-book text-zinc-900 text-2xl"></i>
+                    </div>
+                    <div>
+                        <span class="logo-font text-2xl font-semibold tracking-tighter">Notebook</span>
+                    </div>
+                </div>
+                <button onclick="createNewNote()" 
+                        class="flex items-center gap-x-2 px-3 py-1.5 text-sm font-medium bg-white text-zinc-900 hover:bg-zinc-100 transition-colors rounded-xl">
+                    <i class="fa-solid fa-plus text-xs"></i>
+                    <span class="font-semibold">New</span>
+                </button>
+            </div>
+
+            <!-- Notes List -->
+            <div class="flex-1 overflow-y-auto p-2" id="notes-list">
+                <!-- Populated by JS -->
+            </div>
+
+            <!-- Sidebar Footer -->
+            <div class="p-4 border-t border-zinc-800 text-xs text-zinc-500">
+                <div class="flex items-center gap-x-2">
+                    <i class="fa-solid fa-lock"></i>
+                    <span>100% private • stored locally</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Editor Area -->
+        <div class="flex-1 flex flex-col min-w-0">
+            <!-- Top Bar -->
+            <div class="h-14 border-b border-zinc-800 bg-zinc-900 flex items-center px-5 justify-between">
+                <div class="flex items-center gap-x-3 flex-1 min-w-0">
+                    <!-- Note Title -->
+                    <div class="flex items-center gap-x-2 flex-1 min-w-0">
+                        <input id="note-title" 
+                               type="text" 
+                               class="bg-transparent text-xl font-semibold focus:outline-none w-full min-w-0 placeholder:text-zinc-600"
+                               placeholder="Untitled note"
+                               onblur="updateCurrentNoteTitle()"
+                               onkeyup="if (event.key === 'Enter') this.blur()">
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex items-center gap-x-2">
+                    <!-- Stats -->
+                    <div id="word-count" 
+                         class="hidden md:flex items-center px-3 py-1 text-xs font-mono bg-zinc-800 text-zinc-400 rounded-full">
+                        0 words • 0 chars
+                    </div>
+
+                    <!-- Theme Toggle -->
+                    <button onclick="toggleTheme()" 
+                            class="w-9 h-9 flex items-center justify-center text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-xl transition-colors"
+                            title="Toggle theme">
+                        <i id="theme-icon" class="fa-solid fa-moon"></i>
+                    </button>
+
+                    <!-- Export Dropdown -->
+                    <div class="relative group">
+                        <button class="flex items-center gap-x-2 px-4 py-2 text-sm font-medium bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-2xl">
+                            <i class="fa-solid fa-download mr-2"></i>
+                            <span>Export</span>
+                            <i class="fa-solid fa-chevron-down text-xs ml-1"></i>
+                        </button>
+                        <div class="absolute right-0 mt-2 w-44 bg-zinc-900 border border-zinc-700 rounded-2xl shadow-xl py-1 hidden group-hover:block z-50">
+                            <button onclick="exportNote('md')" class="w-full text-left px-4 py-2.5 text-sm hover:bg-zinc-800 flex items-center gap-x-3">
+                                <i class="fa-brands fa-markdown w-4"></i>
+                                <span>Markdown (.md)</span>
+                            </button>
+                            <button onclick="exportNote('txt')" class="w-full text-left px-4 py-2.5 text-sm hover:bg-zinc-800 flex items-center gap-x-3">
+                                <i class="fa-solid fa-file-lines w-4"></i>
+                                <span>Plain Text (.txt)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Delete Button -->
+                    <button onclick="deleteCurrentNote()" 
+                            class="w-9 h-9 flex items-center justify-center text-zinc-400 hover:text-red-400 hover:bg-zinc-800 rounded-xl transition-colors"
+                            title="Delete note">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Editor + Preview -->
+            <div class="flex-1 flex overflow-hidden">
+                <!-- Editor -->
+                <div class="flex-1 flex flex-col border-r border-zinc-800 min-w-0">
+                    <div class="px-5 py-3 flex items-center justify-between border-b border-zinc-800 bg-zinc-900/50">
+                        <div class="flex items-center gap-x-2 text-sm">
+                            <i class="fa-solid fa-edit text-emerald-400"></i>
+                            <span class="font-semibold text-emerald-400">Editor</span>
+                        </div>
+                        <div class="text-[10px] px-2 py-0.5 bg-zinc-800 text-zinc-500 rounded font-mono">Markdown supported</div>
+                    </div>
+                    <textarea id="editor" 
+                              class="flex-1 p-5 bg-zinc-950 text-zinc-200 font-light text-[15px] leading-relaxed resize-none outline-none"
+                              placeholder="Start writing... Markdown is supported."></textarea>
+                </div>
+
+                <!-- Preview -->
+                <div class="flex-1 flex flex-col min-w-0 hidden lg:flex">
+                    <div class="px-5 py-3 flex items-center justify-between border-b border-zinc-800 bg-zinc-900/50">
+                        <div class="flex items-center gap-x-2 text-sm">
+                            <i class="fa-solid fa-eye text-violet-400"></i>
+                            <span class="font-semibold text-violet-400">Preview</span>
+                        </div>
+                    </div>
+                    <div id="preview" 
+                         class="flex-1 p-5 overflow-auto prose prose-invert prose-zinc max-w-none text-[15px] leading-relaxed">
+                        <!-- Rendered markdown will appear here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Bar -->
+            <div class="h-9 border-t border-zinc-800 bg-zinc-900 px-5 flex items-center justify-between text-xs">
+                <div class="flex items-center gap-x-4 text-zinc-500">
+                    <div class="flex items-center gap-x-1.5">
+                        <i class="fa-solid fa-shield-halved text-emerald-500"></i>
+                        <span class="font-medium">Ad-free • Private</span>
+                    </div>
+                    <div id="save-status" class="font-mono text-emerald-400">Saved locally</div>
+                </div>
+                <div class="text-zinc-500 hidden md:block">
+                    Press <kbd class="px-1.5 py-0.5 bg-zinc-800 rounded text-[10px]">Ctrl/Cmd + K</kbd> for new note
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tailwind configuration
+        function initializeTailwind() {
+            document.documentElement.classList.add('dark');
+            
+            tailwind.config = {
+                darkMode: 'class',
+                theme: {
+                    extend: {
+                        fontFamily: {
+                            'sans': ['Inter', 'system-ui', 'sans-serif']
+                        }
+                    }
+                }
+            };
+        }
+
+        // App State
+        let notes = [];
+        let currentNoteId = null;
+        let saveTimeout = null;
+
+        // Load notes from localStorage
+        function loadNotes() {
+            const saved = localStorage.getItem('notebook_notes');
+            if (saved) {
+                notes = JSON.parse(saved);
+            }
+            
+            // Create welcome note if empty
+            if (notes.length === 0) {
+                const welcomeNote = {
+                    id: Date.now().toString(36),
+                    title: "Welcome to Notebook",
+                    content: "# Welcome to Notebook\n\nThis is a **completely ad-free** and private text editor.\n\n## Features\n\n- Write in Markdown with instant preview\n- Your notes are saved automatically in your browser\n- No accounts, no tracking, no ads ever\n- Export to Markdown or plain text\n\nStart editing this note or create a new one from the sidebar.\n\nHappy writing! ✍️",
+                    updated: new Date().toISOString()
+                };
+                notes.push(welcomeNote);
+                saveNotes();
+            }
+            
+            renderNotesList();
+            
+            // Load the most recently updated note
+            if (notes.length > 0) {
+                const sorted = [...notes].sort((a, b) => new Date(b.updated) - new Date(a.updated));
+                loadNote(sorted[0].id);
+            }
+        }
+
+        function saveNotes() {
+            localStorage.setItem('notebook_notes', JSON.stringify(notes));
+        }
+
+        // Render the sidebar list
+        function renderNotesList() {
+            const container = document.getElementById('notes-list');
+            container.innerHTML = '';
+            
+            if (notes.length === 0) {
+                container.innerHTML = `
+                    <div class="px-4 py-8 text-center text-zinc-500 text-sm">
+                        No notes yet.<br>
+                        Click "New" to create one.
+                    </div>
+                `;
+                return;
+            }
+            
+            // Sort by most recently updated
+            const sortedNotes = [...notes].sort((a, b) => new Date(b.updated) - new Date(a.updated));
+            
+            sortedNotes.forEach(note => {
+                const isActive = note.id === currentNoteId;
+                const div = document.createElement('div');
+                div.className = `note-item px-4 py-3 mx-1 my-0.5 rounded-2xl cursor-pointer flex items-start gap-x-3 ${isActive ? 'active' : ''}`;
+                
+                const preview = note.content.substring(0, 80).replace(/\n/g, ' ').trim() || 'Empty note';
+                
+                div.innerHTML = `
+                    <div class="flex-1 min-w-0">
+                        <div class="font-semibold text-sm truncate ${isActive ? 'text-white' : 'text-zinc-300'}">${note.title || 'Untitled'}</div>
+                        <div class="text-xs text-zinc-500 mt-0.5 line-clamp-2">${preview}</div>
+                        <div class="text-[10px] text-zinc-600 mt-1">${new Date(note.updated).toLocaleDateString()}</div>
+                    </div>
+                `;
+                
+                div.onclick = () => loadNote(note.id);
+                container.appendChild(div);
+            });
+        }
+
+        // Load a specific note into the editor
+        function loadNote(noteId) {
+            const note = notes.find(n => n.id === noteId);
+            if (!note) return;
+
+            currentNoteId = noteId;
+            
+            // Update UI
+            document.getElementById('note-title').value = note.title || '';
+            document.getElementById('editor').value = note.content || '';
+            
+            // Render preview
+            renderPreview();
+            updateWordCount();
+            
+            // Highlight active in sidebar
+            renderNotesList();
+        }
+
+        // Update current note's title
+        function updateCurrentNoteTitle() {
+            if (!currentNoteId) return;
+            
+            const titleInput = document.getElementById('note-title');
+            const note = notes.find(n => n.id === currentNoteId);
+            if (!note) return;
+
+            note.title = titleInput.value.trim() || 'Untitled note';
+            note.updated = new Date().toISOString();
+            
+            saveNotes();
+            renderNotesList();
+        }
+
+        // Auto-save content
+        function setupAutoSave() {
+            const editor = document.getElementById('editor');
+            
+            editor.addEventListener('input', () => {
+                if (!currentNoteId) return;
+
+                const note = notes.find(n => n.id === currentNoteId);
+                if (!note) return;
+
+                note.content = editor.value;
+                note.updated = new Date().toISOString();
+
+                // Debounced save
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(() => {
+                    saveNotes();
+                    document.getElementById('save-status').innerHTML = 'Saved locally';
+                    document.getElementById('save-status').className = 'font-mono text-emerald-400';
+                }, 400);
+
+                renderPreview();
+                updateWordCount();
+                renderNotesList(); // update preview text in sidebar
+            });
+
+            // Also update title on input if needed (optional)
+            const titleInput = document.getElementById('note-title');
+            titleInput.addEventListener('input', () => {
+                if (!currentNoteId) return;
+                const note = notes.find(n => n.id === currentNoteId);
+                if (note) {
+                    note.updated = new Date().toISOString();
+                }
+            });
+        }
+
+        function updateWordCount() {
+            const editor = document.getElementById('editor');
+            const text = editor.value || '';
+            
+            const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+            const chars = text.length;
+            
+            const countEl = document.getElementById('word-count');
+            countEl.textContent = `${words} words • ${chars} chars`;
+        }
+
+        function renderPreview() {
+            const editor = document.getElementById('editor');
+            const preview = document.getElementById('preview');
+            
+            if (!editor || !preview) return;
+            
+            const markdown = editor.value || '';
+            
+            if (!markdown.trim()) {
+                preview.innerHTML = `
+                    <div class="h-full flex items-center justify-center">
+                        <div class="text-center text-zinc-500">
+                            <i class="fa-solid fa-eye text-4xl mb-3 opacity-40"></i>
+                            <p class="text-sm">Preview will appear here</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            try {
+                const html = marked.parse(markdown, {
+                    breaks: true,
+                    gfm: true
+                });
+                preview.innerHTML = html;
+            } catch (e) {
+                preview.innerHTML = `<div class="text-red-400 p-4">Error rendering preview</div>`;
+            }
+        }
+
+        // Create new note
+        function createNewNote() {
+            const newNote = {
+                id: Date.now().toString(36) + Math.random().toString(36).substr(2),
+                title: "New Note",
+                content: "# New Note\n\nStart writing here...",
+                updated: new Date().toISOString()
+            };
+            
+            notes.unshift(newNote);
+            saveNotes();
+            renderNotesList();
+            loadNote(newNote.id);
+            
+            // Focus title for quick rename
+            setTimeout(() => {
+                const titleInput = document.getElementById('note-title');
+                titleInput.focus();
+                titleInput.select();
+            }, 50);
+        }
+
+        // Delete current note
+        function deleteCurrentNote() {
+            if (!currentNoteId) return;
+            if (!confirm('Delete this note? This cannot be undone.')) return;
+
+            notes = notes.filter(n => n.id !== currentNoteId);
+            saveNotes();
+            
+            if (notes.length > 0) {
+                // Load the most recent remaining note
+                const sorted = [...notes].sort((a, b) => new Date(b.updated) - new Date(a.updated));
+                loadNote(sorted[0].id);
+            } else {
+                // Create a new one if none left
+                createNewNote();
+            }
+            
+            renderNotesList();
+        }
+
+        // Export current note
+        function exportNote(format) {
+            if (!currentNoteId) return;
+            
+            const note = notes.find(n => n.id === currentNoteId);
+            if (!note) return;
+
+            let content = note.content;
+            let filename = (note.title || 'note').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            let mimeType = 'text/plain';
+
+            if (format === 'md') {
+                filename += '.md';
+                mimeType = 'text/markdown';
+            } else {
+                filename += '.txt';
+                // Convert markdown-ish to plain by stripping some syntax (simple)
+                content = content.replace(/^#+\s*/gm, '').replace(/\*\*|__/g, '').replace(/\*/g, '');
+            }
+
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Theme toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const icon = document.getElementById('theme-icon');
+            
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+                localStorage.setItem('notebook_theme', 'light');
+            } else {
+                html.classList.add('dark');
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+                localStorage.setItem('notebook_theme', 'dark');
+            }
+        }
+
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('notebook_theme');
+            const icon = document.getElementById('theme-icon');
+            
+            if (savedTheme === 'light') {
+                document.documentElement.classList.remove('dark');
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+            } else {
+                // Default dark
+                document.documentElement.classList.add('dark');
+                icon.classList.add('fa-moon');
+            }
+        }
+
+        // Keyboard shortcuts
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', function(e) {
+                // New note: Ctrl/Cmd + K
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                    e.preventDefault();
+                    createNewNote();
+                }
+                
+                // Save (though auto): Ctrl/Cmd + S
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                    e.preventDefault();
+                    if (currentNoteId) {
+                        const note = notes.find(n => n.id === currentNoteId);
+                        if (note) {
+                            saveNotes();
+                            const status = document.getElementById('save-status');
+                            status.textContent = 'Saved!';
+                            setTimeout(() => {
+                                status.textContent = 'Saved locally';
+                            }, 1200);
+                        }
+                    }
+                }
+
+                // Focus editor
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
+                    e.preventDefault();
+                    document.getElementById('editor').focus();
+                }
+            });
+
+            // Show hint on first load
+            setTimeout(() => {
+                const status = document.getElementById('save-status');
+                if (status) {
+                    // Already shows saved
+                }
+            }, 3000);
+        }
+
+        // Initialize everything
+        function initializeApp() {
+            initializeTailwind();
+            loadTheme();
+            loadNotes();
+            setupAutoSave();
+            setupKeyboardShortcuts();
+
+            // Initial preview render
+            setTimeout(() => {
+                renderPreview();
+                updateWordCount();
+            }, 100);
+
+            // Bonus: Make preview update live while typing (already handled in input)
+            console.log('%c[Notebook] Ad-free text editor initialized successfully.', 'color:#3f3f46');
+        }
+
+        // Boot the app
+        window.onload = initializeApp;
+    </script>
+</body>
+</html>
