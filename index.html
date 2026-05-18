@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Notebook • Ad-free Text Editor</title>
+
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#18181b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Notebook">
+    <meta name="description" content="Clean, private, ad-free Markdown notebook. Your notes stay on your device.">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -25,7 +34,7 @@
         }
 
         .note-item {
-            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.1s cubic-bezier(0.4, 0.0, 0.2, 1);
         }
         
         .note-item:hover {
@@ -91,6 +100,13 @@
             font-size: 12px;
             color: #71717a;
         }
+
+        .search-input {
+            transition: all 0.2s ease;
+        }
+        .search-input:focus {
+            box-shadow: 0 0 0 3px rgba(161, 161, 170, 0.1);
+        }
     </style>
 </head>
 <body class="bg-zinc-950 text-zinc-200">
@@ -114,16 +130,31 @@
                 </button>
             </div>
 
+            <!-- Search Bar -->
+            <div class="px-3 pt-3 pb-2">
+                <div class="relative">
+                    <input id="search-input" 
+                           type="text" 
+                           placeholder="Search notes..." 
+                           class="search-input w-full bg-zinc-800 border border-zinc-700 focus:border-zinc-500 text-sm placeholder:text-zinc-500 rounded-2xl pl-9 py-2.5 outline-none">
+                    <i class="fa-solid fa-search absolute left-3.5 top-3.5 text-zinc-500 text-sm"></i>
+                </div>
+            </div>
+
             <!-- Notes List -->
-            <div class="flex-1 overflow-y-auto p-2" id="notes-list">
+            <div class="flex-1 overflow-y-auto px-2 pb-2" id="notes-list">
                 <!-- Populated by JS -->
             </div>
 
             <!-- Sidebar Footer -->
-            <div class="p-4 border-t border-zinc-800 text-xs text-zinc-500">
+            <div class="p-4 border-t border-zinc-800 text-xs text-zinc-500 space-y-1">
                 <div class="flex items-center gap-x-2">
                     <i class="fa-solid fa-lock"></i>
                     <span>100% private • stored locally</span>
+                </div>
+                <div class="text-[10px] text-emerald-500/70 flex items-center gap-x-1">
+                    <i class="fa-solid fa-download"></i>
+                    <span>Installable as PWA</span>
                 </div>
             </div>
         </div>
@@ -223,12 +254,12 @@
                 <div class="flex items-center gap-x-4 text-zinc-500">
                     <div class="flex items-center gap-x-1.5">
                         <i class="fa-solid fa-shield-halved text-emerald-500"></i>
-                        <span class="font-medium">Ad-free • Private</span>
+                        <span class="font-medium">Ad-free • Private • PWA ready</span>
                     </div>
                     <div id="save-status" class="font-mono text-emerald-400">Saved locally</div>
                 </div>
-                <div class="text-zinc-500 hidden md:block">
-                    Press <kbd class="px-1.5 py-0.5 bg-zinc-800 rounded text-[10px]">Ctrl/Cmd + K</kbd> for new note
+                <div class="text-zinc-500 hidden md:block text-[10px]">
+                    Ctrl/Cmd + K = new note
                 </div>
             </div>
         </div>
@@ -255,6 +286,7 @@
         let notes = [];
         let currentNoteId = null;
         let saveTimeout = null;
+        let currentFilter = '';
 
         // Load notes from localStorage
         function loadNotes() {
@@ -268,7 +300,7 @@
                 const welcomeNote = {
                     id: Date.now().toString(36),
                     title: "Welcome to Notebook",
-                    content: "# Welcome to Notebook\n\nThis is a **completely ad-free** and private text editor.\n\n## Features\n\n- Write in Markdown with instant preview\n- Your notes are saved automatically in your browser\n- No accounts, no tracking, no ads ever\n- Export to Markdown or plain text\n\nStart editing this note or create a new one from the sidebar.\n\nHappy writing! ✍️",
+                    content: "# Welcome to Notebook\n\nThis is a **completely ad-free** and private text editor with **PWA support**.\n\n## New Features\n\n- Powerful search across all your notes\n- Install as a Progressive Web App (PWA)\n- Works great offline after first load\n\n## How to install\nLook for the install icon in your browser's address bar or menu.\n\nStart editing this note or create a new one from the sidebar.",
                     updated: new Date().toISOString()
                 };
                 notes.push(welcomeNote);
@@ -288,30 +320,50 @@
             localStorage.setItem('notebook_notes', JSON.stringify(notes));
         }
 
-        // Render the sidebar list
+        // Render the sidebar list (with optional search filter)
         function renderNotesList() {
             const container = document.getElementById('notes-list');
             container.innerHTML = '';
             
-            if (notes.length === 0) {
+            let filteredNotes = [...notes];
+            
+            // Apply search filter if active
+            if (currentFilter) {
+                const q = currentFilter.toLowerCase();
+                filteredNotes = filteredNotes.filter(note => {
+                    const titleMatch = (note.title || '').toLowerCase().includes(q);
+                    const contentMatch = (note.content || '').toLowerCase().includes(q);
+                    return titleMatch || contentMatch;
+                });
+            }
+            
+            // Sort by most recently updated
+            filteredNotes.sort((a, b) => new Date(b.updated) - new Date(a.updated));
+            
+            if (filteredNotes.length === 0) {
+                const emptyMsg = currentFilter 
+                    ? `No notes match "${currentFilter}"` 
+                    : 'No notes yet. Click "New" to create one.';
                 container.innerHTML = `
                     <div class="px-4 py-8 text-center text-zinc-500 text-sm">
-                        No notes yet.<br>
-                        Click "New" to create one.
+                        ${emptyMsg}
                     </div>
                 `;
                 return;
             }
             
-            // Sort by most recently updated
-            const sortedNotes = [...notes].sort((a, b) => new Date(b.updated) - new Date(a.updated));
-            
-            sortedNotes.forEach(note => {
+            filteredNotes.forEach(note => {
                 const isActive = note.id === currentNoteId;
                 const div = document.createElement('div');
                 div.className = `note-item px-4 py-3 mx-1 my-0.5 rounded-2xl cursor-pointer flex items-start gap-x-3 ${isActive ? 'active' : ''}`;
                 
-                const preview = note.content.substring(0, 80).replace(/\n/g, ' ').trim() || 'Empty note';
+                let preview = (note.content || '').substring(0, 80).replace(/\n/g, ' ').trim() || 'Empty note';
+                
+                // Simple highlight for search matches
+                if (currentFilter) {
+                    const regex = new RegExp(`(${currentFilter})`, 'gi');
+                    preview = preview.replace(regex, '<mark class="bg-yellow-400/30 text-yellow-200 px-0.5 rounded">$1</mark>');
+                }
                 
                 div.innerHTML = `
                     <div class="flex-1 min-w-0">
@@ -321,9 +373,17 @@
                     </div>
                 `;
                 
-                div.onclick = () => loadNote(note.id);
+                div.onclick = () => {
+                    loadNote(note.id);
+                };
                 container.appendChild(div);
             });
+        }
+
+        // Filter notes based on search input
+        function filterNotes(query) {
+            currentFilter = query;
+            renderNotesList();
         }
 
         // Load a specific note into the editor
@@ -377,16 +437,16 @@
                 clearTimeout(saveTimeout);
                 saveTimeout = setTimeout(() => {
                     saveNotes();
-                    document.getElementById('save-status').innerHTML = 'Saved locally';
-                    document.getElementById('save-status').className = 'font-mono text-emerald-400';
+                    const status = document.getElementById('save-status');
+                    status.innerHTML = 'Saved locally';
+                    status.className = 'font-mono text-emerald-400';
                 }, 400);
 
                 renderPreview();
                 updateWordCount();
-                renderNotesList(); // update preview text in sidebar
+                renderNotesList();
             });
 
-            // Also update title on input if needed (optional)
             const titleInput = document.getElementById('note-title');
             titleInput.addEventListener('input', () => {
                 if (!currentNoteId) return;
@@ -450,6 +510,12 @@
             
             notes.unshift(newNote);
             saveNotes();
+            
+            // Clear search when creating new note
+            currentFilter = '';
+            const searchInput = document.getElementById('search-input');
+            if (searchInput) searchInput.value = '';
+            
             renderNotesList();
             loadNote(newNote.id);
             
@@ -469,12 +535,14 @@
             notes = notes.filter(n => n.id !== currentNoteId);
             saveNotes();
             
+            currentFilter = '';
+            const searchInput = document.getElementById('search-input');
+            if (searchInput) searchInput.value = '';
+            
             if (notes.length > 0) {
-                // Load the most recent remaining note
                 const sorted = [...notes].sort((a, b) => new Date(b.updated) - new Date(a.updated));
                 loadNote(sorted[0].id);
             } else {
-                // Create a new one if none left
                 createNewNote();
             }
             
@@ -497,7 +565,6 @@
                 mimeType = 'text/markdown';
             } else {
                 filename += '.txt';
-                // Convert markdown-ish to plain by stripping some syntax (simple)
                 content = content.replace(/^#+\s*/gm, '').replace(/\*\*|__/g, '').replace(/\*/g, '');
             }
 
@@ -540,7 +607,6 @@
                 icon.classList.remove('fa-moon');
                 icon.classList.add('fa-sun');
             } else {
-                // Default dark
                 document.documentElement.classList.add('dark');
                 icon.classList.add('fa-moon');
             }
@@ -549,13 +615,11 @@
         // Keyboard shortcuts
         function setupKeyboardShortcuts() {
             document.addEventListener('keydown', function(e) {
-                // New note: Ctrl/Cmd + K
                 if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
                     e.preventDefault();
                     createNewNote();
                 }
                 
-                // Save (though auto): Ctrl/Cmd + S
                 if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
                     e.preventDefault();
                     if (currentNoteId) {
@@ -571,20 +635,38 @@
                     }
                 }
 
-                // Focus editor
                 if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
                     e.preventDefault();
                     document.getElementById('editor').focus();
                 }
+
+                // Focus search with /
+                if (e.key === '/' && document.activeElement.id !== 'search-input') {
+                    e.preventDefault();
+                    const searchInput = document.getElementById('search-input');
+                    if (searchInput) searchInput.focus();
+                }
+            });
+        }
+
+        // Setup search functionality
+        function setupSearch() {
+            const searchInput = document.getElementById('search-input');
+            if (!searchInput) return;
+
+            searchInput.addEventListener('input', (e) => {
+                filterNotes(e.target.value);
             });
 
-            // Show hint on first load
-            setTimeout(() => {
-                const status = document.getElementById('save-status');
-                if (status) {
-                    // Already shows saved
+            // Clear search on Escape
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    searchInput.value = '';
+                    currentFilter = '';
+                    renderNotesList();
+                    searchInput.blur();
                 }
-            }, 3000);
+            });
         }
 
         // Initialize everything
@@ -594,6 +676,18 @@
             loadNotes();
             setupAutoSave();
             setupKeyboardShortcuts();
+            setupSearch();
+
+            // Register Service Worker for PWA
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(() => {
+                        console.log('%c[PWA] Service Worker registered successfully', 'color:#22c55e');
+                    })
+                    .catch((err) => {
+                        console.warn('[PWA] Service Worker registration failed:', err);
+                    });
+            }
 
             // Initial preview render
             setTimeout(() => {
@@ -601,8 +695,7 @@
                 updateWordCount();
             }, 100);
 
-            // Bonus: Make preview update live while typing (already handled in input)
-            console.log('%c[Notebook] Ad-free text editor initialized successfully.', 'color:#3f3f46');
+            console.log('%c[Notebook] Ad-free PWA text editor initialized.', 'color:#3f3f46');
         }
 
         // Boot the app
