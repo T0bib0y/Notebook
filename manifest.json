@@ -1,0 +1,26 @@
+{
+  "name": "Notebook - Ad-free Text Editor",
+  "short_name": "Notebook",
+  "description": "Clean, private, and completely ad-free Markdown notebook. Your notes stay on your device.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#18181b",
+  "theme_color": "#18181b",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2961/2961948.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2961/2961948.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "lang": "en"
+}
