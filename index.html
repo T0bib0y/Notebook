@@ -5,13 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Notebook • Ad-free Text Editor</title>
 
-    <!-- PWA Meta Tags -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#18181b">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Notebook">
-    <meta name="description" content="Clean, private, ad-free Markdown notebook. Your notes stay on your device.">
+    <meta name="description" content="Clean, private Markdown notebook with folders, tags, and PWA support.">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -19,302 +18,203 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap');
         
-        :root {
-            --font-sans: 'Inter', system_ui, sans-serif;
-        }
-        
-        body {
-            font-family: var(--font-sans);
-        }
-        
-        .logo-font {
-            font-family: 'Space Grotesk', var(--font-sans);
-            font-weight: 600;
-            letter-spacing: -0.02em;
-        }
+        body { font-family: 'Inter', system-ui, sans-serif; }
+        .logo-font { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 600; letter-spacing: -0.02em; }
 
-        .note-item {
-            transition: all 0.1s cubic-bezier(0.4, 0.0, 0.2, 1);
-        }
-        
-        .note-item:hover {
-            background-color: #27272a;
-        }
-        
-        .note-item.active {
-            background-color: #3f3f46;
-            border-left: 3px solid #a1a1aa;
-        }
+        .note-item { transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1); }
+        .note-item:hover { background-color: #27272a; }
+        .note-item.active { background-color: #3f3f46; border-left: 3px solid #a1a1aa; }
 
-        #editor {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-            line-height: 1.7;
-            tab-size: 4;
-        }
+        #editor { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; line-height: 1.7; }
 
-        #preview {
-            font-size: 15px;
-            line-height: 1.75;
-        }
+        .folder-badge { font-size: 10px; padding: 1px 7px; border-radius: 9999px; }
+        .tag-pill { font-size: 10px; padding: 1px 6px; background-color: #27272a; border-radius: 9999px; }
 
-        #preview h1, #preview h2, #preview h3 {
-            font-weight: 600;
-            margin-top: 1.5em;
-            margin-bottom: 0.5em;
-            color: #e4e4e7;
-        }
-
-        #preview p {
-            margin-bottom: 1em;
-        }
-
-        #preview ul, #preview ol {
-            padding-left: 1.5em;
-            margin-bottom: 1em;
-        }
-
-        #preview code {
-            background-color: #27272a;
-            padding: 0.1em 0.4em;
-            border-radius: 4px;
-            font-size: 0.9em;
-        }
-
-        #preview pre {
-            background-color: #18181b;
-            padding: 1rem;
-            border-radius: 8px;
-            overflow-x: auto;
-            margin: 1em 0;
-        }
-
-        .prose-custom {
-            color: #d4d4d8;
-        }
-
-        .split-divider {
-            background: linear-gradient(to right, transparent, #3f3f46, transparent);
-        }
-
-        .status-bar {
-            font-size: 12px;
-            color: #71717a;
-        }
-
-        .search-input {
-            transition: all 0.2s ease;
-        }
-        .search-input:focus {
-            box-shadow: 0 0 0 3px rgba(161, 161, 170, 0.1);
-        }
+        .sidebar-section-title { font-size: 11px; letter-spacing: 0.5px; }
     </style>
 </head>
 <body class="bg-zinc-950 text-zinc-200">
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar -->
         <div class="w-72 bg-zinc-900 border-r border-zinc-800 flex flex-col">
-            <!-- Sidebar Header -->
+            <!-- Header -->
             <div class="p-4 border-b border-zinc-800 flex items-center justify-between">
                 <div class="flex items-center gap-x-3">
                     <div class="w-9 h-9 bg-white rounded-xl flex items-center justify-center">
                         <i class="fa-solid fa-book text-zinc-900 text-2xl"></i>
                     </div>
-                    <div>
-                        <span class="logo-font text-2xl font-semibold tracking-tighter">Notebook</span>
-                    </div>
+                    <span class="logo-font text-2xl font-semibold tracking-tighter">Notebook</span>
                 </div>
-                <button onclick="createNewNote()" 
-                        class="flex items-center gap-x-2 px-3 py-1.5 text-sm font-medium bg-white text-zinc-900 hover:bg-zinc-100 transition-colors rounded-xl">
+                <button onclick="createNewNote()" class="flex items-center gap-x-2 px-3 py-1.5 text-sm font-medium bg-white text-zinc-900 hover:bg-zinc-100 transition-colors rounded-xl">
                     <i class="fa-solid fa-plus text-xs"></i>
                     <span class="font-semibold">New</span>
                 </button>
             </div>
 
-            <!-- Search Bar -->
-            <div class="px-3 pt-3 pb-2">
+            <!-- Search -->
+            <div class="px-3 pt-3 pb-1">
                 <div class="relative">
-                    <input id="search-input" 
-                           type="text" 
-                           placeholder="Search notes..." 
-                           class="search-input w-full bg-zinc-800 border border-zinc-700 focus:border-zinc-500 text-sm placeholder:text-zinc-500 rounded-2xl pl-9 py-2.5 outline-none">
-                    <i class="fa-solid fa-search absolute left-3.5 top-3.5 text-zinc-500 text-sm"></i>
+                    <input id="search-input" type="text" placeholder="Search notes..." 
+                           class="w-full bg-zinc-800 border border-zinc-700 focus:border-zinc-500 text-sm placeholder:text-zinc-500 rounded-2xl pl-9 py-2 outline-none">
+                    <i class="fa-solid fa-search absolute left-3.5 top-2.5 text-zinc-500 text-sm"></i>
+                </div>
+            </div>
+
+            <!-- Folders -->
+            <div class="px-3 pt-3">
+                <div class="sidebar-section-title px-2 mb-1.5 text-zinc-500 font-semibold flex items-center gap-x-2">
+                    <i class="fa-solid fa-folder text-xs"></i> 
+                    <span>FOLDERS</span>
+                </div>
+                <div id="folder-list" class="space-y-0.5">
+                    <!-- Populated by JS -->
                 </div>
             </div>
 
             <!-- Notes List -->
-            <div class="flex-1 overflow-y-auto px-2 pb-2" id="notes-list">
+            <div class="flex-1 overflow-y-auto px-2 pt-3 pb-2 border-t border-zinc-800 mt-2" id="notes-list">
                 <!-- Populated by JS -->
             </div>
 
-            <!-- Sidebar Footer -->
-            <div class="p-4 border-t border-zinc-800 text-xs text-zinc-500 space-y-1">
+            <!-- Footer -->
+            <div class="p-4 border-t border-zinc-800 text-xs text-zinc-500">
                 <div class="flex items-center gap-x-2">
                     <i class="fa-solid fa-lock"></i>
-                    <span>100% private • stored locally</span>
-                </div>
-                <div class="text-[10px] text-emerald-500/70 flex items-center gap-x-1">
-                    <i class="fa-solid fa-download"></i>
-                    <span>Installable as PWA</span>
+                    <span>Private • PWA ready</span>
                 </div>
             </div>
         </div>
 
-        <!-- Main Editor Area -->
+        <!-- Main Content -->
         <div class="flex-1 flex flex-col min-w-0">
             <!-- Top Bar -->
             <div class="h-14 border-b border-zinc-800 bg-zinc-900 flex items-center px-5 justify-between">
-                <div class="flex items-center gap-x-3 flex-1 min-w-0">
+                <div class="flex items-center gap-x-4 flex-1 min-w-0">
                     <!-- Note Title -->
-                    <div class="flex items-center gap-x-2 flex-1 min-w-0">
-                        <input id="note-title" 
-                               type="text" 
-                               class="bg-transparent text-xl font-semibold focus:outline-none w-full min-w-0 placeholder:text-zinc-600"
-                               placeholder="Untitled note"
-                               onblur="updateCurrentNoteTitle()"
-                               onkeyup="if (event.key === 'Enter') this.blur()">
+                    <input id="note-title" type="text" class="bg-transparent text-xl font-semibold focus:outline-none flex-1 min-w-0 placeholder:text-zinc-600" 
+                           placeholder="Untitled note" onblur="updateCurrentNote()">
+
+                    <!-- Folder Selector -->
+                    <div class="flex items-center gap-x-2 text-sm">
+                        <select id="note-folder" onchange="updateCurrentNote()" 
+                                class="bg-zinc-800 border border-zinc-700 text-sm rounded-xl px-3 py-1.5 outline-none text-zinc-300">
+                            <option value="">No folder</option>
+                            <option value="Personal">Personal</option>
+                            <option value="Work">Work</option>
+                            <option value="Ideas">Ideas</option>
+                        </select>
                     </div>
                 </div>
 
-                <!-- Actions -->
                 <div class="flex items-center gap-x-2">
-                    <!-- Stats -->
-                    <div id="word-count" 
-                         class="hidden md:flex items-center px-3 py-1 text-xs font-mono bg-zinc-800 text-zinc-400 rounded-full">
-                        0 words • 0 chars
+                    <!-- Word Count -->
+                    <div id="word-count" class="hidden md:flex items-center px-3 py-1 text-xs font-mono bg-zinc-800 text-zinc-400 rounded-full">
+                        0 words
                     </div>
 
-                    <!-- Theme Toggle -->
-                    <button onclick="toggleTheme()" 
-                            class="w-9 h-9 flex items-center justify-center text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-xl transition-colors"
-                            title="Toggle theme">
+                    <!-- Theme -->
+                    <button onclick="toggleTheme()" class="w-9 h-9 flex items-center justify-center text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-xl" title="Toggle theme">
                         <i id="theme-icon" class="fa-solid fa-moon"></i>
                     </button>
 
-                    <!-- Export Dropdown -->
+                    <!-- Export -->
                     <div class="relative group">
-                        <button class="flex items-center gap-x-2 px-4 py-2 text-sm font-medium bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-2xl">
+                        <button class="flex items-center gap-x-2 px-4 py-2 text-sm font-medium bg-zinc-800 hover:bg-zinc-700 rounded-2xl">
                             <i class="fa-solid fa-download mr-2"></i>
                             <span>Export</span>
-                            <i class="fa-solid fa-chevron-down text-xs ml-1"></i>
                         </button>
-                        <div class="absolute right-0 mt-2 w-52 bg-zinc-900 border border-zinc-700 rounded-2xl shadow-xl py-1 hidden group-hover:block z-50">
+                        <div class="absolute right-0 mt-2 w-56 bg-zinc-900 border border-zinc-700 rounded-2xl shadow-xl py-1 hidden group-hover:block z-50">
                             <button onclick="exportNote('md')" class="w-full text-left px-4 py-2 text-sm hover:bg-zinc-800 flex items-center gap-x-3">
-                                <i class="fa-brands fa-markdown w-4"></i>
-                                <span>Current note as Markdown</span>
+                                <i class="fa-brands fa-markdown"></i> <span>Current as Markdown</span>
                             </button>
                             <button onclick="exportNote('txt')" class="w-full text-left px-4 py-2 text-sm hover:bg-zinc-800 flex items-center gap-x-3">
-                                <i class="fa-solid fa-file-lines w-4"></i>
-                                <span>Current note as Text</span>
+                                <i class="fa-solid fa-file-lines"></i> <span>Current as Text</span>
                             </button>
                             <div class="border-t border-zinc-700 my-1"></div>
                             <button onclick="exportAllNotes()" class="w-full text-left px-4 py-2 text-sm hover:bg-zinc-800 flex items-center gap-x-3 text-emerald-400">
-                                <i class="fa-solid fa-file-export w-4"></i>
-                                <span><strong>Export All Notes</strong> (JSON)</span>
+                                <i class="fa-solid fa-file-export"></i> <span><strong>Export All Notes</strong></span>
                             </button>
                         </div>
                     </div>
 
-                    <!-- Delete Button -->
-                    <button onclick="deleteCurrentNote()" 
-                            class="w-9 h-9 flex items-center justify-center text-zinc-400 hover:text-red-400 hover:bg-zinc-800 rounded-xl transition-colors"
-                            title="Delete note">
+                    <button onclick="deleteCurrentNote()" class="w-9 h-9 flex items-center justify-center text-zinc-400 hover:text-red-400 hover:bg-zinc-800 rounded-xl" title="Delete note">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                 </div>
             </div>
 
+            <!-- Tags Bar -->
+            <div class="px-5 py-2 border-b border-zinc-800 bg-zinc-900/60 flex items-center gap-x-3 text-sm">
+                <div class="text-zinc-400 text-xs font-medium w-12">TAGS</div>
+                <input id="note-tags" type="text" placeholder="Add tags (comma separated)" 
+                       class="flex-1 bg-transparent text-sm placeholder:text-zinc-500 outline-none" 
+                       onblur="updateCurrentNote()">
+                <div id="current-tags" class="flex gap-x-1.5 flex-wrap"></div>
+            </div>
+
             <!-- Editor + Preview -->
             <div class="flex-1 flex overflow-hidden">
                 <!-- Editor -->
-                <div class="flex-1 flex flex-col border-r border-zinc-800 min-w-0">
-                    <div class="px-5 py-3 flex items-center justify-between border-b border-zinc-800 bg-zinc-900/50">
-                        <div class="flex items-center gap-x-2 text-sm">
-                            <i class="fa-solid fa-edit text-emerald-400"></i>
-                            <span class="font-semibold text-emerald-400">Editor</span>
-                        </div>
-                        <div class="text-[10px] px-2 py-0.5 bg-zinc-800 text-zinc-500 rounded font-mono">Markdown supported</div>
+                <div class="flex-1 flex flex-col border-r border-zinc-800">
+                    <div class="px-5 py-2.5 flex items-center text-sm border-b border-zinc-800 bg-zinc-900/40">
+                        <span class="font-semibold text-emerald-400 flex items-center gap-x-2"><i class="fa-solid fa-edit"></i> Editor</span>
                     </div>
-                    <textarea id="editor" 
-                              class="flex-1 p-5 bg-zinc-950 text-zinc-200 font-light text-[15px] leading-relaxed resize-none outline-none"
-                              placeholder="Start writing... Markdown is supported."></textarea>
+                    <textarea id="editor" class="flex-1 p-5 bg-zinc-950 text-[15px] leading-relaxed resize-none outline-none font-light" 
+                              placeholder="Start writing in Markdown..."></textarea>
                 </div>
 
                 <!-- Preview -->
-                <div class="flex-1 flex flex-col min-w-0 hidden lg:flex">
-                    <div class="px-5 py-3 flex items-center justify-between border-b border-zinc-800 bg-zinc-900/50">
-                        <div class="flex items-center gap-x-2 text-sm">
-                            <i class="fa-solid fa-eye text-violet-400"></i>
-                            <span class="font-semibold text-violet-400">Preview</span>
-                        </div>
+                <div class="flex-1 flex flex-col hidden lg:flex">
+                    <div class="px-5 py-2.5 flex items-center text-sm border-b border-zinc-800 bg-zinc-900/40">
+                        <span class="font-semibold text-violet-400 flex items-center gap-x-2"><i class="fa-solid fa-eye"></i> Preview</span>
                     </div>
-                    <div id="preview" 
-                         class="flex-1 p-5 overflow-auto prose prose-invert prose-zinc max-w-none text-[15px] leading-relaxed">
-                        <!-- Rendered markdown will appear here -->
-                    </div>
+                    <div id="preview" class="flex-1 p-5 overflow-auto prose prose-invert max-w-none text-[15px]"></div>
                 </div>
             </div>
 
-            <!-- Status Bar -->
-            <div class="h-9 border-t border-zinc-800 bg-zinc-900 px-5 flex items-center justify-between text-xs">
-                <div class="flex items-center gap-x-4 text-zinc-500">
-                    <div class="flex items-center gap-x-1.5">
-                        <i class="fa-solid fa-shield-halved text-emerald-500"></i>
-                        <span class="font-medium">Ad-free • Private • PWA ready</span>
-                    </div>
-                    <div id="save-status" class="font-mono text-emerald-400">Saved locally</div>
+            <!-- Status -->
+            <div class="h-9 border-t border-zinc-800 bg-zinc-900 px-5 flex items-center text-xs text-zinc-500">
+                <div class="flex items-center gap-x-2">
+                    <i class="fa-solid fa-shield-halved text-emerald-500"></i>
+                    <span>Ad-free • Private • Offline ready</span>
                 </div>
-                <div class="text-zinc-500 hidden md:block text-[10px]">
-                    Ctrl/Cmd + K = new note
-                </div>
+                <div id="save-status" class="ml-auto font-mono text-emerald-400">Saved locally</div>
             </div>
         </div>
     </div>
 
     <script>
-        // Tailwind configuration
-        function initializeTailwind() {
-            document.documentElement.classList.add('dark');
-            
-            tailwind.config = {
-                darkMode: 'class',
-                theme: {
-                    extend: {
-                        fontFamily: {
-                            'sans': ['Inter', 'system-ui', 'sans-serif']
-                        }
-                    }
-                }
-            };
-        }
-
-        // App State
         let notes = [];
         let currentNoteId = null;
         let saveTimeout = null;
         let currentFilter = '';
+        let currentFolderFilter = '';
 
-        // Load notes from localStorage
+        const DEFAULT_FOLDERS = ['Personal', 'Work', 'Ideas'];
+
+        function initializeTailwind() {
+            document.documentElement.classList.add('dark');
+        }
+
         function loadNotes() {
             const saved = localStorage.getItem('notebook_notes');
-            if (saved) {
-                notes = JSON.parse(saved);
-            }
-            
+            if (saved) notes = JSON.parse(saved);
+
             if (notes.length === 0) {
-                const welcomeNote = {
+                notes.push({
                     id: Date.now().toString(36),
                     title: "Welcome to Notebook",
-                    content: "# Welcome to Notebook\n\nThis is a **completely ad-free** and private text editor with **PWA support**.\n\n## New Features\n\n- Powerful search across all your notes\n- Install as Progressive Web App (PWA)\n- Works great offline after first load\n- Export all notes as backup (JSON)\n\nStart editing this note or create a new one from the sidebar.",
+                    content: "# Welcome!\n\nThis version supports **folders** and **tags** for better organization.\n\n- Use the folder dropdown to categorize notes\n- Add tags below the title\n- Click folders or tags in the sidebar to filter\n\nYour data stays private and works offline.",
+                    folder: "Ideas",
+                    tags: ["welcome", "getting-started"],
                     updated: new Date().toISOString()
-                };
-                notes.push(welcomeNote);
+                });
                 saveNotes();
             }
-            
+            renderFolders();
             renderNotesList();
-            
             if (notes.length > 0) {
-                const sorted = [...notes].sort((a, b) => new Date(b.updated) - new Date(a.updated));
+                const sorted = [...notes].sort((a,b) => new Date(b.updated) - new Date(a.updated));
                 loadNote(sorted[0].id);
             }
         }
@@ -323,55 +223,91 @@
             localStorage.setItem('notebook_notes', JSON.stringify(notes));
         }
 
+        function renderFolders() {
+            const container = document.getElementById('folder-list');
+            container.innerHTML = '';
+
+            // All Notes
+            const allDiv = document.createElement('div');
+            allDiv.className = `px-3 py-1.5 text-sm rounded-xl cursor-pointer flex items-center gap-x-2 hover:bg-zinc-800 ${currentFolderFilter === '' ? 'bg-zinc-800 text-white' : 'text-zinc-300'}`;
+            allDiv.innerHTML = `<i class="fa-solid fa-inbox w-4"></i> <span>All Notes</span>`;
+            allDiv.onclick = () => { currentFolderFilter = ''; renderNotesList(); renderFolders(); };
+            container.appendChild(allDiv);
+
+            DEFAULT_FOLDERS.forEach(folder => {
+                const count = notes.filter(n => n.folder === folder).length;
+                const div = document.createElement('div');
+                div.className = `px-3 py-1.5 text-sm rounded-xl cursor-pointer flex items-center justify-between hover:bg-zinc-800 ${currentFolderFilter === folder ? 'bg-zinc-800 text-white' : 'text-zinc-300'}`;
+                div.innerHTML = `
+                    <div class="flex items-center gap-x-2">
+                        <i class="fa-solid fa-folder w-4"></i> 
+                        <span>${folder}</span>
+                    </div>
+                    <span class="text-xs text-zinc-500">${count}</span>
+                `;
+                div.onclick = () => { currentFolderFilter = folder; renderNotesList(); renderFolders(); };
+                container.appendChild(div);
+            });
+        }
+
         function renderNotesList() {
             const container = document.getElementById('notes-list');
             container.innerHTML = '';
-            
-            let filteredNotes = [...notes];
-            
+
+            let filtered = [...notes];
+
+            // Folder filter
+            if (currentFolderFilter) {
+                filtered = filtered.filter(n => n.folder === currentFolderFilter);
+            }
+
+            // Search filter
             if (currentFilter) {
                 const q = currentFilter.toLowerCase();
-                filteredNotes = filteredNotes.filter(note => {
-                    const titleMatch = (note.title || '').toLowerCase().includes(q);
-                    const contentMatch = (note.content || '').toLowerCase().includes(q);
-                    return titleMatch || contentMatch;
-                });
+                filtered = filtered.filter(n => 
+                    (n.title || '').toLowerCase().includes(q) || 
+                    (n.content || '').toLowerCase().includes(q) ||
+                    (n.tags || []).some(t => t.toLowerCase().includes(q))
+                );
             }
-            
-            filteredNotes.sort((a, b) => new Date(b.updated) - new Date(a.updated));
-            
-            if (filteredNotes.length === 0) {
-                const emptyMsg = currentFilter 
-                    ? `No notes match "${currentFilter}"` 
-                    : 'No notes yet. Click "New" to create one.';
-                container.innerHTML = `
-                    <div class="px-4 py-8 text-center text-zinc-500 text-sm">
-                        ${emptyMsg}
-                    </div>
-                `;
+
+            filtered.sort((a, b) => new Date(b.updated) - new Date(a.updated));
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="px-4 py-8 text-center text-zinc-500 text-sm">No notes found.</div>`;
                 return;
             }
-            
-            filteredNotes.forEach(note => {
+
+            filtered.forEach(note => {
                 const isActive = note.id === currentNoteId;
                 const div = document.createElement('div');
-                div.className = `note-item px-4 py-3 mx-1 my-0.5 rounded-2xl cursor-pointer flex items-start gap-x-3 ${isActive ? 'active' : ''}`;
-                
-                let preview = (note.content || '').substring(0, 80).replace(/\n/g, ' ').trim() || 'Empty note';
-                
-                if (currentFilter) {
-                    const regex = new RegExp(`(${currentFilter})`, 'gi');
-                    preview = preview.replace(regex, '<mark class="bg-yellow-400/30 text-yellow-200 px-0.5 rounded">$1</mark>');
+                div.className = `note-item px-3 py-3 mx-1 my-0.5 rounded-2xl cursor-pointer ${isActive ? 'active' : ''}`;
+
+                let tagsHTML = '';
+                if (note.tags && note.tags.length > 0) {
+                    tagsHTML = note.tags.slice(0, 3).map(tag => 
+                        `<span class="tag-pill px-1.5 py-px text-[9px] text-zinc-400">${tag}</span>`
+                    ).join('');
                 }
-                
+
+                const folderHTML = note.folder 
+                    ? `<span class="folder-badge bg-zinc-700 text-zinc-300">${note.folder}</span>` 
+                    : '';
+
                 div.innerHTML = `
-                    <div class="flex-1 min-w-0">
-                        <div class="font-semibold text-sm truncate ${isActive ? 'text-white' : 'text-zinc-300'}">${note.title || 'Untitled'}</div>
-                        <div class="text-xs text-zinc-500 mt-0.5 line-clamp-2">${preview}</div>
-                        <div class="text-[10px] text-zinc-600 mt-1">${new Date(note.updated).toLocaleDateString()}</div>
+                    <div class="px-1">
+                        <div class="flex items-center justify-between">
+                            <div class="font-semibold text-sm truncate pr-2">${note.title || 'Untitled'}</div>
+                            ${folderHTML}
+                        </div>
+                        <div class="text-xs text-zinc-500 mt-1 line-clamp-2">${(note.content || '').substring(0, 70).replace(/\n/g, ' ')}</div>
+                        <div class="flex items-center gap-x-2 mt-2">
+                            ${tagsHTML}
+                            <span class="text-[10px] text-zinc-600 ml-auto">${new Date(note.updated).toLocaleDateString()}</span>
+                        </div>
                     </div>
                 `;
-                
+
                 div.onclick = () => loadNote(note.id);
                 container.appendChild(div);
             });
@@ -387,28 +323,56 @@
             if (!note) return;
 
             currentNoteId = noteId;
+
             document.getElementById('note-title').value = note.title || '';
             document.getElementById('editor').value = note.content || '';
+            document.getElementById('note-folder').value = note.folder || '';
+            document.getElementById('note-tags').value = (note.tags || []).join(', ');
+
+            renderCurrentTags(note.tags || []);
             renderPreview();
             updateWordCount();
             renderNotesList();
+            renderFolders();
         }
 
-        function updateCurrentNoteTitle() {
+        function updateCurrentNote() {
             if (!currentNoteId) return;
-            const titleInput = document.getElementById('note-title');
             const note = notes.find(n => n.id === currentNoteId);
             if (!note) return;
 
-            note.title = titleInput.value.trim() || 'Untitled note';
+            note.title = document.getElementById('note-title').value.trim() || 'Untitled note';
+            note.folder = document.getElementById('note-folder').value || '';
+            
+            const tagsInput = document.getElementById('note-tags').value;
+            note.tags = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(Boolean) : [];
+
             note.updated = new Date().toISOString();
+
             saveNotes();
             renderNotesList();
+            renderFolders();
+            renderCurrentTags(note.tags);
+        }
+
+        function renderCurrentTags(tags) {
+            const container = document.getElementById('current-tags');
+            container.innerHTML = '';
+            tags.forEach(tag => {
+                const span = document.createElement('span');
+                span.className = `tag-pill px-2 py-0.5 text-xs cursor-pointer hover:bg-zinc-700`;
+                span.textContent = tag;
+                span.onclick = () => {
+                    currentFilter = tag;
+                    document.getElementById('search-input').value = tag;
+                    renderNotesList();
+                };
+                container.appendChild(span);
+            });
         }
 
         function setupAutoSave() {
             const editor = document.getElementById('editor');
-            
             editor.addEventListener('input', () => {
                 if (!currentNoteId) return;
                 const note = notes.find(n => n.id === currentNoteId);
@@ -420,255 +384,175 @@
                 clearTimeout(saveTimeout);
                 saveTimeout = setTimeout(() => {
                     saveNotes();
-                    const status = document.getElementById('save-status');
-                    status.innerHTML = 'Saved locally';
-                    status.className = 'font-mono text-emerald-400';
-                }, 400);
+                    document.getElementById('save-status').textContent = 'Saved';
+                    setTimeout(() => document.getElementById('save-status').textContent = 'Saved locally', 800);
+                }, 500);
 
                 renderPreview();
                 updateWordCount();
                 renderNotesList();
             });
 
-            const titleInput = document.getElementById('note-title');
-            titleInput.addEventListener('input', () => {
-                if (!currentNoteId) return;
-                const note = notes.find(n => n.id === currentNoteId);
-                if (note) note.updated = new Date().toISOString();
-            });
+            // Also save on title/folder/tags change (already handled in updateCurrentNote)
         }
 
         function updateWordCount() {
-            const editor = document.getElementById('editor');
-            const text = editor.value || '';
+            const text = document.getElementById('editor').value || '';
             const words = text.trim() ? text.trim().split(/\s+/).length : 0;
-            const chars = text.length;
-            document.getElementById('word-count').textContent = `${words} words • ${chars} chars`;
+            document.getElementById('word-count').textContent = `${words} words`;
         }
 
         function renderPreview() {
-            const editor = document.getElementById('editor');
             const preview = document.getElementById('preview');
-            if (!editor || !preview) return;
-
-            const markdown = editor.value || '';
-            if (!markdown.trim()) {
-                preview.innerHTML = `<div class="h-full flex items-center justify-center"><div class="text-center text-zinc-500"><i class="fa-solid fa-eye text-4xl mb-3 opacity-40"></i><p class="text-sm">Preview will appear here</p></div></div>`;
+            const content = document.getElementById('editor').value || '';
+            if (!content.trim()) {
+                preview.innerHTML = `<div class="h-full flex items-center justify-center text-zinc-500"><i class="fa-solid fa-eye text-3xl mb-2 opacity-30"></i></div>`;
                 return;
             }
-            try {
-                preview.innerHTML = marked.parse(markdown, { breaks: true, gfm: true });
-            } catch (e) {
-                preview.innerHTML = `<div class="text-red-400 p-4">Error rendering preview</div>`;
-            }
+            preview.innerHTML = marked.parse(content, { breaks: true, gfm: true });
         }
 
         function createNewNote() {
             const newNote = {
-                id: Date.now().toString(36) + Math.random().toString(36).substr(2),
+                id: Date.now().toString(36) + Math.random().toString(36).slice(2),
                 title: "New Note",
-                content: "# New Note\n\nStart writing here...",
+                content: "# New Note\n\nStart writing...",
+                folder: currentFolderFilter || '',
+                tags: [],
                 updated: new Date().toISOString()
             };
             notes.unshift(newNote);
             saveNotes();
 
             currentFilter = '';
-            const searchInput = document.getElementById('search-input');
-            if (searchInput) searchInput.value = '';
+            document.getElementById('search-input').value = '';
 
+            renderFolders();
             renderNotesList();
             loadNote(newNote.id);
 
             setTimeout(() => {
-                const titleInput = document.getElementById('note-title');
-                titleInput.focus();
-                titleInput.select();
+                document.getElementById('note-title').focus();
+                document.getElementById('note-title').select();
             }, 50);
         }
 
         function deleteCurrentNote() {
-            if (!currentNoteId) return;
-            if (!confirm('Delete this note? This cannot be undone.')) return;
+            if (!currentNoteId || !confirm('Delete this note?')) return;
 
             notes = notes.filter(n => n.id !== currentNoteId);
             saveNotes();
+            currentNoteId = null;
 
             currentFilter = '';
-            const searchInput = document.getElementById('search-input');
-            if (searchInput) searchInput.value = '';
+            document.getElementById('search-input').value = '';
 
+            renderFolders();
             if (notes.length > 0) {
-                const sorted = [...notes].sort((a, b) => new Date(b.updated) - new Date(a.updated));
+                const sorted = [...notes].sort((a,b) => new Date(b.updated)-new Date(a.updated));
                 loadNote(sorted[0].id);
             } else {
-                createNewNote();
+                renderNotesList();
             }
-            renderNotesList();
         }
 
         function exportNote(format) {
             if (!currentNoteId) return;
             const note = notes.find(n => n.id === currentNoteId);
-            if (!note) return;
-
             let content = note.content;
-            let filename = (note.title || 'note').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-            let mimeType = 'text/plain';
+            let filename = (note.title || 'note').replace(/\s+/g, '_');
 
-            if (format === 'md') {
-                filename += '.md';
-                mimeType = 'text/markdown';
-            } else {
-                filename += '.txt';
-                content = content.replace(/^#+\s*/gm, '').replace(/\*\*|__/g, '').replace(/\*/g, '');
-            }
+            if (format === 'md') filename += '.md';
+            else { filename += '.txt'; content = content.replace(/^#+\s*/gm, ''); }
 
-            const blob = new Blob([content], { type: mimeType });
+            const blob = new Blob([content], { type: format === 'md' ? 'text/markdown' : 'text/plain' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            a.href = url; a.download = filename; a.click();
             URL.revokeObjectURL(url);
         }
 
-        // NEW: Export ALL notes as JSON backup
         function exportAllNotes() {
-            if (notes.length === 0) {
-                alert('No notes to export!');
-                return;
-            }
+            if (notes.length === 0) return alert('No notes to export');
 
             const backup = {
                 exportedAt: new Date().toISOString(),
-                app: 'Notebook - Ad-free Text Editor',
-                version: '2.0',
-                noteCount: notes.length,
+                app: "Notebook",
                 notes: notes
             };
-
-            const json = JSON.stringify(backup, null, 2);
-            const blob = new Blob([json], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-
-            const filename = `notebook-backup-${new Date().toISOString().split('T')[0]}.json`;
-
+            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
             const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
+            a.href = URL.createObjectURL(blob);
+            a.download = `notebook-backup-${new Date().toISOString().split('T')[0]}.json`;
             a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-
-            // Optional: Show success message
-            const status = document.getElementById('save-status');
-            const originalText = status.textContent;
-            status.textContent = 'All notes exported!';
-            status.className = 'font-mono text-emerald-400';
-            setTimeout(() => {
-                status.textContent = originalText || 'Saved locally';
-            }, 2000);
+            URL.revokeObjectURL(a.href);
         }
 
         function toggleTheme() {
             const html = document.documentElement;
             const icon = document.getElementById('theme-icon');
-            
             if (html.classList.contains('dark')) {
                 html.classList.remove('dark');
-                icon.classList.remove('fa-moon');
-                icon.classList.add('fa-sun');
+                icon.classList.replace('fa-moon', 'fa-sun');
                 localStorage.setItem('notebook_theme', 'light');
             } else {
                 html.classList.add('dark');
-                icon.classList.remove('fa-sun');
-                icon.classList.add('fa-moon');
+                icon.classList.replace('fa-sun', 'fa-moon');
                 localStorage.setItem('notebook_theme', 'dark');
             }
         }
 
         function loadTheme() {
-            const savedTheme = localStorage.getItem('notebook_theme');
-            const icon = document.getElementById('theme-icon');
-            
-            if (savedTheme === 'light') {
+            if (localStorage.getItem('notebook_theme') === 'light') {
                 document.documentElement.classList.remove('dark');
-                icon.classList.remove('fa-moon');
-                icon.classList.add('fa-sun');
-            } else {
-                document.documentElement.classList.add('dark');
-                icon.classList.add('fa-moon');
+                document.getElementById('theme-icon').classList.replace('fa-moon', 'fa-sun');
             }
         }
 
-        function setupKeyboardShortcuts() {
-            document.addEventListener('keydown', function(e) {
-                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-                    e.preventDefault();
-                    createNewNote();
-                }
-                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-                    e.preventDefault();
-                    if (currentNoteId) {
-                        saveNotes();
-                        const status = document.getElementById('save-status');
-                        status.textContent = 'Saved!';
-                        setTimeout(() => status.textContent = 'Saved locally', 1200);
-                    }
-                }
-                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
-                    e.preventDefault();
-                    document.getElementById('editor').focus();
-                }
-                if (e.key === '/' && document.activeElement.id !== 'search-input') {
-                    e.preventDefault();
-                    const searchInput = document.getElementById('search-input');
-                    if (searchInput) searchInput.focus();
-                }
-            });
-        }
-
-        function setupSearch() {
+        function setupListeners() {
+            // Search
             const searchInput = document.getElementById('search-input');
-            if (!searchInput) return;
-
-            searchInput.addEventListener('input', (e) => filterNotes(e.target.value));
-
-            searchInput.addEventListener('keydown', (e) => {
+            searchInput.addEventListener('input', e => filterNotes(e.target.value));
+            searchInput.addEventListener('keydown', e => {
                 if (e.key === 'Escape') {
                     searchInput.value = '';
                     currentFilter = '';
                     renderNotesList();
-                    searchInput.blur();
                 }
             });
+
+            // Auto update on editor blur
+            document.getElementById('editor').addEventListener('blur', updateCurrentNote);
+
+            // Keyboard
+            document.addEventListener('keydown', e => {
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                    e.preventDefault(); createNewNote();
+                }
+                if (e.key === '/' && document.activeElement.id !== 'search-input') {
+                    e.preventDefault(); searchInput.focus();
+                }
+            });
+
+            // PWA Service Worker
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./sw.js');
+            }
         }
 
         function initializeApp() {
             initializeTailwind();
             loadTheme();
             loadNotes();
+            setupListeners();
             setupAutoSave();
-            setupKeyboardShortcuts();
-            setupSearch();
-
-            // Register Service Worker
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(() => console.log('%c[PWA] Service Worker registered (v2 with CDN cache)', 'color:#22c55e'))
-                    .catch(err => console.warn('[PWA] SW registration failed', err));
-            }
 
             setTimeout(() => {
                 renderPreview();
                 updateWordCount();
-            }, 100);
+            }, 80);
 
-            console.log('%c[Notebook] Ad-free PWA + Search + Export All initialized.', 'color:#3f3f46');
+            console.log('%c[Notebook] Folders + Tags + Clean UI initialized', 'color:#22c55e');
         }
 
         window.onload = initializeApp;
